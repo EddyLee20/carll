@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>车了了管理后台</title>
+    {load href="/static/admin/layui/css/layui.css" /}
+    {load href="/static/admin/css/style.css" /}
+    <style>
+        html,body{
+            height: 100%;
+        }
+        body{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: url("/static/admin/image/login_bg.png");
+            background-size: cover;
+        }
+    </style>
+</head>
+<body>
+<div class="login-div">
+    <h1>车了了管理后台</h1>
+    <form id="login-form" action="#">
+        <div class="login-form-item">
+            <input name="username" placeholder="用户名">
+        </div>
+        <div class="login-form-item">
+            <input name="password" type="password" placeholder="密码">
+        </div>
+        <button class="btn-login" type="button">登录</button>
+    </form>
+</div>
+</body>
+</html>
+{include file="public/bottom" /}
+<script>
+    layuiModules=['layer','form'];
+
+    function mounted(){
+
+        var url = location.href;
+        $(".btn-login").on('click', function () {
+            $.post(url, $("#login-form").serialize(),
+                function(resp){
+                    if(resp.resp_code == 10000){
+                        $.cookie("info",JSON.stringify(resp.data),{path:'/', domain:location.host});
+                        location.href = resp.url;
+                    }else{
+                        layer.msg(resp.resp_msg);
+                        return false;
+                    }
+
+                }, "json");
+        });
+
+
+        /*$('#login-form').submit(function () {
+            location.href="";
+            return false;
+        })*/
+    }
+
+</script>

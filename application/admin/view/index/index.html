@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    {load href="/static/admin/layui/css/layui.css" /}
+    {load href="/static/admin/css/style.css" /}
+    <title>车了了</title>
+</head>
+<body>
+{include file="public/header" /}
+</body>
+</html>
+<!--修改密码弹框-->
+<script type="text/html" id="dialogChangePassword">
+    <form class="layui-form" id="dialogChangePasswordForm" style="margin-top:30px;padding-right:30px;">
+        <div class="layui-form-item">
+            <label class="layui-form-label">原密码</label>
+            <div class="layui-input-block">
+                <input type="password" name="old_password"
+                       placeholder="请输入原密码" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">新密码</label>
+            <div class="layui-input-block">
+                <input type="password" name="password"
+                       placeholder="请输入新密码" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">确认密码</label>
+            <div class="layui-input-block">
+                <input type="password" name="ck_password"
+                       placeholder="请重复输入密码" class="layui-input">
+            </div>
+        </div>
+    </form>
+</script>
+
+{include file="public/bottom" /}
+<script>
+    layuiModules=['layer', 'form','element'];
+    var loginUrl = 'passport/login';
+
+    function mounted() {
+
+        //登录验证
+        var info = $.cookie('info');
+        if(info==null||info==undefined||info==""){
+            exit('系统异常，请重新登录');return false;
+        }
+        info = JSON.parse(info);
+        var baseInfo = {uid:info.uid,token:info.token};
+        console.log(info);
+        if(info.code == 7){
+            changePwd(baseInfo,true);
+        }
+        
+        //菜单列表数据
+        window.menuArray = [
+            {
+                name: "首页",
+                id: 1,
+                pid: 0,
+                url: '#/info'
+            }, {
+                name: "用户管理",
+                id: 2,
+                pid: 0,
+                url: '#/user_list'
+            }, {
+                name: "产品管理",
+                id: 3,
+                pid: 0,
+                url: ''
+            }, {
+                name: "车险管理",
+                id: 31,
+                pid: 3,
+                url: '#/quote_list'
+            }, {
+                name: "非车险管理",
+                id: 32,
+                pid: 3,
+                url: '#/quote_list'
+            }, {
+                name: "订单管理",
+                id: 4,
+                pid: 0,
+                url: ''
+            }, {
+                name: "多图上传",
+                id: 5,
+                pid: 0,
+                url: ''
+            }, {
+                name: "富文本",
+                id: 6,
+                pid: 0,
+                url: ''
+            },
+        ];
+        formatMenus();
+        //初始化类vue路由
+        initRouter();
+        //显示设置弹框
+        $('.loginNameDiv').click(function () {
+            if ($('.dialogMenu').css('display') === 'block') {
+                $('.dialogMenu').css('display', 'none');
+            } else {
+                $('.dialogMenu').css('display', 'block');
+            }
+
+        });
+        //退出登录
+        $('#parentExit').click(function () {
+            var url = 'user/index';
+            var data = $.extend(true, {action: "user_logout" }, baseInfo);
+            $('.dialogMenu').css('display', 'none');
+            layer.open({
+                type: 1,
+                content: `<div style="padding: 20px;">是否退出</div>`,
+                btn: ["确定退出", "暂不退出"],
+                yes: function (index, layero) {
+                    $.post(url, data,
+                        function(resp){
+                            if(resp.resp_code == 10000) {
+                                exit('退出成功');return false;
+                            }else{
+                                layer.open({
+                                    title: '系统异常',
+                                    content: resp.resp_msg,
+                                });
+                                return false;
+                            }
+                        }, "json");
+                },
+                btn2: function (index, layero) {
+                    //return false 开启该代码可禁止点击该按钮关闭
+                }
+            });
+        });
+        //显示修改密码弹框
+        $('#parentChangePassword').click(function () {
+            changePwd(baseInfo);
+        });
+        //用户信息初始化
+        $('.users').html(info.user.nickname);
+        $('.role').html(info.user.remark);
+    }
+
+    /**
+     * 修改密码界面
+     */
+    function changePwd(baseInfo, first=false) {
+        var url = 'passport/passwordReset';
+
+        //
+        $('.dialogMenu').css('display', 'none');
+        layer.open({
+            type: 1,
+            title: '修改密码',
+            content: $('#dialogChangePassword').html(), //这里content是一个普通的String
+            btn: ['确定', '取消'],
+            yes: function (index, layero) {
+                var data = $.extend(true, baseInfo, $('#dialogChangePasswordForm').serializeJson());
+                $.post(url, data,
+                    function(resp){
+                        if(resp.resp_code == 10000) {
+                            exit('修改成功，请重新登录');return false;
+                        }else{
+                            layer.msg(resp.resp_msg);
+                            return false;
+                        }
+                    }, "json");
+            },
+            btn2: function (index, layero) {
+                if(first) return false;
+            },
+            cancel: function(index,layero){
+                if(first) return false;
+            },
+        });
+    }
+    
+    function exit(msg) {
+        layer.msg(msg,{} , function(){
+            $.cookie('info', '', {path:'/', domain:location.host});
+            top.location = loginUrl;
+        });
+    }
+
+    $.fn.serializeJson=function(){
+        var serializeObj={};
+        var array=this.serializeArray();
+        var str=this.serialize();
+        $(array).each(function(){
+            if(serializeObj[this.name]){
+                if($.isArray(serializeObj[this.name])){
+                    serializeObj[this.name].push(this.value);
+                }else{
+                    serializeObj[this.name]=[serializeObj[this.name],this.value];
+                }
+            }else{
+                serializeObj[this.name]=this.value;
+            }
+        });
+        return serializeObj;
+    };
+
+
+    /**
+     *格式化菜单数据
+     */
+    function formatMenus() {
+        findChildMenus(0);
+        window.element.render('nav');
+    }
+
+    /**
+     * 根据id查找下级菜单
+     * @param id
+     */
+    function findChildMenus(id) {
+        var style;
+        var route = window.globalConfig.router;
+        if (id == 0) {
+            menuArray.forEach(function (item) {
+                var index = item.url.substring(item.url.indexOf('#/') + 2);
+                if(route == index){
+                    style = "layui-nav-item layui-this";
+                }else{
+                    style = "layui-nav-item";
+                }
+                if (item.pid == id) {
+                    $('.leftMenu ul')
+                        .append('<li menu-id="' + item.id + '" class="'+style+'"><a href="' + item.url + '">' + item.name + '</a></li>')
+                    findChildMenus(item.id);
+                }
+            });
+
+        } else {
+            menuArray.forEach(function (item) {
+                if (item.pid == id) {
+                    $('[menu-id="' + item.pid + '"]>a').removeAttr('href');
+                    if (!$('[menu-id="' + item.pid + '"]').children('dl')[0]) {
+                        $('[menu-id="' + item.pid + '"]').append('<dl class="layui-nav-child"></dl>')
+                    }
+                    $('[menu-id="' + item.pid + '"] dl')
+                        .append('<dd menu-id="' + item.id + '"><a href="' + item.url + '">' + item.name + '</a></dd>');
+                    findChildMenus(item.id);
+                }
+            });
+        }
+
+    }
+
+
+</script>
